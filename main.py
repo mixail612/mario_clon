@@ -1,7 +1,7 @@
 import pygame as pg
 
 
-class Tile(pg.sprite.Sprite):
+class Tile(pg.sprite.Sprite):#класс стен и препятствий
 
     images = {
         'wall': pg.image.load('data/img/box.png'),
@@ -16,20 +16,18 @@ class Tile(pg.sprite.Sprite):
                                           tile_pos[1] * Tile.size)
         self.type = tile_type
 
-    def step(self, dx, dy):
+    def step(self, dx, dy):# фметод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx * Tile.size, -1 * dy * Tile.size)
 
 
-
-class Level:
-
+class Level:# класс уровня
     def __init__(self, level_path):
         self.tile_group = pg.sprite.Group()
         self.player_group = pg.sprite.Group()
         flag = 0
         while flag == 0:
             try:
-                with open(level_path, mode='r', encoding='UTF-8') as level_file:
+                with open(level_path, mode='r', encoding='UTF-8') as level_file: # загрузка уровня
                     for x, line in enumerate(level_file):
                         line = line.strip()
                         for y,sym in enumerate(line[::-1]):
@@ -58,7 +56,7 @@ class Level:
 
 
 
-class Player(pg.sprite.Sprite):
+class Player(pg.sprite.Sprite):# класс игрока
 
     image = pg.image.load('data/img/mar.png')
 
@@ -67,17 +65,17 @@ class Player(pg.sprite.Sprite):
         self.image = Player.image
         self.rect = self.image.get_rect().move(pos)
 
-    def step(self, dx, dy, level):
+    def step(self, dx, dy, level):# метод перемещения игрока
         self.rect = self.rect.move(dx * Tile.size, dy * Tile.size)
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
-            if tile.type == 'wall':
+            if tile.type == 'wall':# в случае если перемещение происходит на препятствие, игрок перемещается на последний пиксель перед ним
                 if dy < 0:
                     self.rect = self.image.get_rect().move(self.rect.x, tile.rect.y + 50)
                 else:
                     self.rect = self.image.get_rect().move(self.rect.x, tile.rect.y - 50 + (50 - self.rect.height))
                 return - 1
 
-    def camera_step(self, dx, dy, level):
+    def camera_step(self, dx, dy, level): # метод перемещения камеры
         self.rect = self.rect.move(dx * Tile.size, dy * Tile.size)
         flag = 1
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
@@ -108,23 +106,21 @@ while running:
         if event.type == pg.QUIT:
             running = False
         if event.type == pg.KEYDOWN:
-            if event.key == pg.K_w or event.key == pg.K_UP:
+            if event.key == pg.K_w or event.key == pg.K_UP:# прыжок
                 jump = 2.5
-            if event.key == pg.K_s or event.key == pg.K_DOWN:
-                level.get_player().step(0, 1, level)
 
-    if pg.key.get_pressed()[pg.K_LEFT]:
+    if pg.key.get_pressed()[pg.K_LEFT]:# хождение вперед, назад
         level.get_player().camera_step(-0.07, 0, level)
     if pg.key.get_pressed()[pg.K_RIGHT]:
         level.get_player().camera_step(0.07, 0, level)
 
-    if jump > 0:
+    if jump > 0: # физика прыжка
         jump_height = 0.15 * jump
         level.get_player().step(0, -jump_height, level)
         jump -= jump_height
         if jump_height <= dt:
             jump = -1
-    else:
+    else:# физика падения
         time += dt
         if level.get_player().step(0, time, level) == -1:
             time = 0

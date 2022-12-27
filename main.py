@@ -157,10 +157,10 @@ class Enemy(Entity):
                 print('-1')
             self.kill()
             return
-        for enemy in level.get_enemys():  # столкновение с другим игроком
+        '''for enemy in level.get_enemys():  # столкновение с другим иврагом
             if pg.sprite.spritecollideany(self, (enemy,)) and \
                     self != enemy and is_negative(self.speed) == is_negative(enemy.speed):
-                self.step(-self.speed, 0, level)
+                self.step(-self.speed, 0, level)'''
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx * Tile.size, -1 * dy * Tile.size)
@@ -197,9 +197,9 @@ while running:
                     else:
                         level.get_player().can_jump = -0.35
 
-    if pg.key.get_pressed()[pg.K_LEFT]:  # хождение вперед, назад
+    if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
         level.get_player().camera_step(-0.14, 0, level)
-    if pg.key.get_pressed()[pg.K_RIGHT]:
+    if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
         level.get_player().camera_step(0.14, 0, level)
 
     if jump > 0:  # физика прыжка

@@ -119,6 +119,8 @@ class Player(Entity):  # класс игрока
     def __init__(self, pos, *groups):
         super().__init__(pos, Player.image, *groups)
         self.can_jump = 0
+        self.jump_height = 0
+        self.jump_time = 0
 
     def camera_step(self, dx, dy, level):  # метод перемещения камеры
         self.rect = self.rect.move(dx * Tile.size, dy * Tile.size)
@@ -136,6 +138,28 @@ class Player(Entity):  # класс игрока
 
     def get_info(self):
         return 'player', (self.rect.x, self.rect.y)
+
+    def jump_physic(self, dt):
+        if self.jump_height > 0:  # физика прыжка
+            if self.jump_time == 0:
+                self.jump_time = self.jump_height ** 0.5 / 4
+            jump_delta = (self.jump_time * 4) ** 2 - ((self.jump_time - dt) * 4) ** 2
+            level.get_player().step(0, -jump_delta, level)
+            self.jump_height -= jump_delta
+            self.jump_time -= dt
+            if jump_delta <= 0.01:
+                self.jump_height = -1
+                self.time = 0
+
+    def jump(self, height):
+        if self.can_jump >= 0:
+            self.jump_height = height
+            self.jump_time = 0
+            if self.can_jump >= 0.35:
+                self.can_jump = 0
+            else:
+                self.can_jump = -0.35
+
 
 
 class Enemy(Entity):
@@ -189,29 +213,18 @@ while running:
             running = False
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
-                print(level.get_player().can_jump)
-                if level.get_player().can_jump >= 0:
-                    jump = 2.5
-                    if level.get_player().can_jump >= 0.35:
-                        level.get_player().can_jump = 0
-                    else:
-                        level.get_player().can_jump = -0.35
+                level.get_player().jump(2.5)
 
     if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
         level.get_player().camera_step(-0.14, 0, level)
     if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
         level.get_player().camera_step(0.14, 0, level)
 
-    if jump > 0:  # физика прыжка
-        jump_height = 0.30 * jump
-        level.get_player().step(0, -jump_height, level)
-        jump -= jump_height
-        if jump_height <= dt:
-            jump = -1
-
-    else:  # физика падения
+    # физика падения
+    if level.get_player().jump_height <= 0:
         level.get_player().physic(dt)
-        level.get_player().can_jump += dt
+    level.get_player().can_jump += dt
+    level.get_player().jump_physic(dt)
 
     for enemy in level.enemy_group: # изика и ии противника
         enemy.ai(level)

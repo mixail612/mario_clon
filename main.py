@@ -1,6 +1,7 @@
 import pygame as pg
 import random
 
+
 def is_negative(num):
     if num < 0:
         return -1
@@ -36,7 +37,6 @@ class Level:  # класс уровня
         self.player_group = pg.sprite.Group()
         self.enemy_group = pg.sprite.Group()
         flag = 0
-
         while flag == 0:
             try:
                 with open(level_path, mode='r', encoding='UTF-8') as level_file:  # загрузка уровня
@@ -59,7 +59,6 @@ class Level:  # класс уровня
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
                                               speed=random.randint(30, 45) / 10, can_die=False)
                 flag = 1
-
             except BaseException as ex:
                 print('файл не найден, попробуйте ещё раз', ex)
                 level_path = input()
@@ -114,6 +113,7 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                     return - 1
 
     def physic(self, dt):  # метод отвечающий за физику падения
+
         if self.step(0, self.time * 50, level) == -1:
             self.time = 0
         else:
@@ -151,6 +151,7 @@ class Player(Entity):  # класс игрока
         return 'player', (self.rect.x, self.rect.y)
 
     def physic(self, dt):
+        print(self.time, dt, self.jump_speed * (dt + 0.001) - self.time, self.jump_speed * (dt))
         if self.step(0, self.time * 50, level) == -1:
             self.time = 0
             self.jump_speed = 0
@@ -165,6 +166,8 @@ class Player(Entity):  # класс игрока
             level.get_player().step(0, -0.1, level)
             self.can_jump -= 1
             self.time = 0
+
+
 
 
 class Enemy(Entity):
@@ -218,7 +221,7 @@ while running:
             running = False
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
-                level.get_player().jump(125)  # возможна погрешность
+                level.get_player().jump(125)
 
     if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
         level.get_player().camera_step(-7, 0, level)
@@ -228,7 +231,7 @@ while running:
     # физика падения
     level.get_player().physic(dt)
 
-    for enemy in level.enemy_group:  # физика и ии противника
+    for enemy in level.enemy_group: # изика и ии противника
         enemy.ai(level)
         enemy.physic(dt)
 

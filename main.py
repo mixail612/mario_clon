@@ -138,10 +138,9 @@ class Player(Entity):  # класс игрока
         flag = 1
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
-                self.rect = self.rect.move(-1 * dx, -1 * dy)
                 flag = 0
+        self.rect = self.rect.move(-1 * dx, -1 * dy)
         if flag:
-            self.rect = self.rect.move(-1 * dx, -1 * dy)
             for tile in level.get_tiles():
                 tile.step_camera(dx, dy)
             for tile in level.get_enemys():

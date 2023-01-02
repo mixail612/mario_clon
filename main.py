@@ -1,7 +1,6 @@
 import pygame as pg
 import random
 
-
 def is_negative(num):
     if num < 0:
         return -1
@@ -24,10 +23,11 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
         self.image = Tile.images[tile_type]
         self.rect = self.image.get_rect().move(tile_pos[0] * Tile.size,
                                                tile_pos[1] * Tile.size)
+        self.pos = tile_pos
         self.type = tile_type
 
     def step_camera(self, dx, dy):  # фметод перемещения для работы перемещения камеры
-        self.rect = self.rect.move(-1 * dx * Tile.size, -1 * dy * Tile.size)
+        self.rect = self.rect.move(-1 * dx, -1 * dy)
 
 
 class Level:  # класс уровня
@@ -36,6 +36,7 @@ class Level:  # класс уровня
         self.player_group = pg.sprite.Group()
         self.enemy_group = pg.sprite.Group()
         flag = 0
+
         while flag == 0:
             try:
                 with open(level_path, mode='r', encoding='UTF-8') as level_file:  # загрузка уровня
@@ -52,18 +53,24 @@ class Level:  # класс уровня
                             elif sym == 'e':
                                 Tile('empty', (x, y), self.tile_group)
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(30, 70) / 1000)
+                                              speed=random.randint(20, 30) / 10)
                             elif sym == 'E':
                                 Tile('empty', (x, y), self.tile_group)
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(70, 140) / 1000, can_die=False)
+                                              speed=random.randint(30, 45) / 10, can_die=False)
                 flag = 1
+
             except BaseException as ex:
                 print('файл не найден, попробуйте ещё раз', ex)
                 level_path = input()
 
     def get_tiles(self):
         return self.tile_group
+
+    def get_tile(self, pos):
+        for tile in self.tile_group:
+            if pos == tile.pos:
+                return tile
 
     def get_enemys(self):
         return self.enemy_group
@@ -85,7 +92,7 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
         self.time = 0
 
     def step(self, dx, dy, level):  # метод перемещения сущности
-        self.rect = self.rect.move(dx * Tile.size, dy * Tile.size)
+        self.rect = self.rect.move(dx, dy)
 
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
@@ -107,9 +114,13 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                     return - 1
 
     def physic(self, dt):  # метод отвечающий за физику падения
-        self.time += dt
-        if self.step(0, self.time, level) == -1:
+        if self.step(0, self.time * 50, level) == -1:
             self.time = 0
+        else:
+            self.time += dt
+
+    def get_pos(self):
+        return self.rect.x, self.rect.y
 
 
 class Player(Entity):  # класс игрока
@@ -119,18 +130,18 @@ class Player(Entity):  # класс игрока
     def __init__(self, pos, *groups):
         super().__init__(pos, Player.image, *groups)
         self.can_jump = 0
-        self.jump_height = 0
+        self.jump_speed = 0
         self.jump_time = 0
 
     def camera_step(self, dx, dy, level):  # метод перемещения камеры
-        self.rect = self.rect.move(dx * Tile.size, dy * Tile.size)
+        self.rect = self.rect.move(dx, dy)
         flag = 1
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
-                self.rect = self.rect.move(-1 * dx * Tile.size, -1 * dy * Tile.size)
+                self.rect = self.rect.move(-1 * dx, -1 * dy)
                 flag = 0
         if flag:
-            self.rect = self.rect.move(-1 * dx * Tile.size, -1 * dy * Tile.size)
+            self.rect = self.rect.move(-1 * dx, -1 * dy)
             for tile in level.get_tiles():
                 tile.step_camera(dx, dy)
             for tile in level.get_enemys():
@@ -139,33 +150,27 @@ class Player(Entity):  # класс игрока
     def get_info(self):
         return 'player', (self.rect.x, self.rect.y)
 
-    def jump_physic(self, dt):
-        if self.jump_height > 0:  # физика прыжка
-            if self.jump_time == 0:
-                self.jump_time = self.jump_height ** 0.5 / 4
-            jump_delta = (self.jump_time * 4) ** 2 - ((self.jump_time - dt) * 4) ** 2
-            level.get_player().step(0, -jump_delta, level)
-            self.jump_height -= jump_delta
-            self.jump_time -= dt
-            if jump_delta <= 0.01:
-                self.jump_height = -1
-                self.time = 0
+    def physic(self, dt):
+        if self.step(0, self.time * 50, level) == -1:
+            self.time = 0
+            self.jump_speed = 0
+            self.can_jump = 2
+        else:
+            level.get_player().step(0, -self.jump_speed * (dt + 0.001) * 50, level)
+            self.time += dt
 
     def jump(self, height):
-        if self.can_jump >= 0:
-            self.jump_height = height
-            self.jump_time = 0
-            if self.can_jump >= 0.35:
-                self.can_jump = 0
-            else:
-                self.can_jump = -0.35
-
+        if self.can_jump > 0:
+            self.jump_speed = height ** 0.5
+            level.get_player().step(0, -0.1, level)
+            self.can_jump -= 1
+            self.time = 0
 
 
 class Enemy(Entity):
     image = pg.image.load('data/img/mar.png')
 
-    def __init__(self, pos, *groups, speed=-0.05, can_die=True):
+    def __init__(self, pos, *groups, speed=-2, can_die=True):
         super().__init__(pos, Enemy.image, *groups)
         self.speed = speed
         self.can_die = can_die
@@ -187,7 +192,7 @@ class Enemy(Entity):
                 self.step(-self.speed, 0, level)'''
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
-        self.rect = self.rect.move(-1 * dx * Tile.size, -1 * dy * Tile.size)
+        self.rect = self.rect.move(-1 * dx, -1 * dy)
 
     def get_info(self):
         return 'enemy', (self.rect.x, self.rect.y)
@@ -213,20 +218,17 @@ while running:
             running = False
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
-                level.get_player().jump(2.5)
+                level.get_player().jump(125)  # возможна погрешность
 
     if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
-        level.get_player().camera_step(-0.14, 0, level)
+        level.get_player().camera_step(-7, 0, level)
     if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
-        level.get_player().camera_step(0.14, 0, level)
+        level.get_player().camera_step(7, 0, level)
 
     # физика падения
-    if level.get_player().jump_height <= 0:
-        level.get_player().physic(dt)
-    level.get_player().can_jump += dt
-    level.get_player().jump_physic(dt)
+    level.get_player().physic(dt)
 
-    for enemy in level.enemy_group: # изика и ии противника
+    for enemy in level.enemy_group:  # физика и ии противника
         enemy.ai(level)
         enemy.physic(dt)
 

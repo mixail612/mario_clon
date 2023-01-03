@@ -1,6 +1,8 @@
 import pygame as pg
 import random
+import time as Time
 
+level_num = 1
 
 def is_negative(num):
     if num < 0:
@@ -11,11 +13,29 @@ def is_negative(num):
         return 0
 
 
+def end_world(world_name=''):
+    global level, level_num
+    level_num += 1
+    Time.sleep(0.5)
+    level.__del__()
+    if world_name:
+        level = Level(world_name)
+    else:
+        level = Level(f'world{level_num}.txt')
+
+
+def end_game():
+    global running
+    running = False
+    print('end')
+
+
 class Tile(pg.sprite.Sprite):  # класс стен и препятствий
 
     images = {
         'wall': pg.image.load('data/img/box.png'),
-        'empty': pg.image.load('data/img/grass.png')
+        'empty': pg.image.load('data/img/grass.png'),
+        'end': pg.image.load('data/img/exit.png')
     }
     size = 50
 
@@ -36,32 +56,30 @@ class Level:  # класс уровня
         self.tile_group = pg.sprite.Group()
         self.player_group = pg.sprite.Group()
         self.enemy_group = pg.sprite.Group()
-        flag = 0
-        while flag == 0:
-            try:
-                with open(level_path, mode='r', encoding='UTF-8') as level_file:  # загрузка уровня
-                    for x, line in enumerate(level_file):
-                        line = line.strip()
-                        for y, sym in enumerate(line[::-1]):
-                            if sym == '*':
-                                Tile('empty', (x, y), self.tile_group)
-                            elif sym == '#':
-                                Tile('wall', (x, y), self.tile_group)
-                            elif sym == 'u':
-                                Tile('empty', (x, y), self.tile_group)
-                                player = Player((x * Tile.size, y * Tile.size), self.player_group)
-                            elif sym == 'e':
-                                Tile('empty', (x, y), self.tile_group)
-                                enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(20, 30) / 10, diff_level=1)
-                            elif sym == 'E':
-                                Tile('empty', (x, y), self.tile_group)
-                                enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(30, 45) / 10, diff_level=2)
-                flag = 1
-            except BaseException as ex:
-                print('файл не найден, попробуйте ещё раз', ex)
-                level_path = input()
+        try:
+            with open(level_path, mode='r', encoding='UTF-8') as level_file:  # загрузка уровня
+                for x, line in enumerate(level_file):
+                    line = line.strip()
+                    for y, sym in enumerate(line[::-1]):
+                        if sym == '*':
+                            Tile('empty', (x, y), self.tile_group)
+                        elif sym == '#':
+                            Tile('wall', (x, y), self.tile_group)
+                        elif sym == 'w':
+                            Tile('end', (x, y), self.tile_group)
+                        elif sym == 'u':
+                            Tile('empty', (x, y), self.tile_group)
+                            player = Player((x * Tile.size, y * Tile.size), self.player_group)
+                        elif sym == 'e':
+                            Tile('empty', (x, y), self.tile_group)
+                            enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
+                                          speed=random.randint(20, 30) / 10, diff_level=1)
+                        elif sym == 'E':
+                            Tile('empty', (x, y), self.tile_group)
+                            enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
+                                          speed=random.randint(30, 45) / 10, diff_level=2)
+        except BaseException as ex:
+            end_game()
 
     def get_tiles(self):
         return self.tile_group
@@ -81,6 +99,14 @@ class Level:  # класс уровня
         self.tile_group.draw(surface)
         self.player_group.draw(surface)
         self.enemy_group.draw(surface)
+
+    def __del__(self):
+        for tile in self.tile_group:
+            tile.kill()
+        for player in self.player_group:
+            player.kill()
+        for enemy in self.enemy_group:
+            enemy.kill()
 
 
 class Entity(pg.sprite.Sprite):  # базовый класс движущихся сущностей
@@ -139,6 +165,8 @@ class Player(Entity):  # класс игрока
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
                 flag = 0
+            if tile.type == 'end':
+                end_world()
         self.rect = self.rect.move(-1 * dx, -1 * dy)
         if flag:
             for tile in level.get_tiles():
@@ -150,7 +178,6 @@ class Player(Entity):  # класс игрока
         return 'player', (self.rect.x, self.rect.y)
 
     def physic(self, dt):
-        print(self.time, dt, self.jump_speed * (dt + 0.001) - self.time, self.jump_speed * (dt))
         if self.step(0, self.time * 50, level) == -1:
             self.time = 0
             self.jump_speed = 0
@@ -158,6 +185,9 @@ class Player(Entity):  # класс игрока
         else:
             level.get_player().step(0, -self.jump_speed * (dt + 0.001) * 50, level)
             self.time += dt
+        for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
+            if tile.type == 'end':
+                end_world()
 
     def jump(self, height):
         if self.can_jump > 0:
@@ -167,15 +197,12 @@ class Player(Entity):  # класс игрока
             self.time = 0
 
 
-
-
 class Enemy(Entity):
     image = {
         'right': pg.image.load('data/img/dragon_right.png'),
         'left': pg.image.load('data/img/dragon_left.png'),
         'mushroom': pg.image.load('data/img/mushroom.png')
     }
-
 
     def __init__(self, pos, *groups, speed=-2, diff_level=1):
         self.speed = speed
@@ -197,7 +224,7 @@ class Enemy(Entity):
                 else:
                     self.image = Enemy.image['right']
         if pg.sprite.spritecollideany(self, level.player_group):  # обработка столкновение с игроком
-            if self.rect.y > level.get_player().rect.y and self.can_die:
+            if self.rect.y - self.rect.height // 2 > level.get_player().rect.y and self.can_die:
                 print('+1')
             else:
                 print('-1')
@@ -215,7 +242,7 @@ class Enemy(Entity):
         return 'enemy', (self.rect.x, self.rect.y)
 
 
-level = Level(input())
+level = Level('world1.txt')
 
 pg.init()
 size = width, height = 600, 450
@@ -245,7 +272,7 @@ while running:
     # физика падения
     level.get_player().physic(dt)
 
-    for enemy in level.enemy_group: # изика и ии противника
+    for enemy in level.enemy_group:  # изика и ии противника
         enemy.ai(level)
         enemy.physic(dt)
 

@@ -53,11 +53,11 @@ class Level:  # класс уровня
                             elif sym == 'e':
                                 Tile('empty', (x, y), self.tile_group)
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(20, 30) / 10)
+                                              speed=random.randint(20, 30) / 10, diff_level=1)
                             elif sym == 'E':
                                 Tile('empty', (x, y), self.tile_group)
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(30, 45) / 10, can_die=False)
+                                              speed=random.randint(30, 45) / 10, diff_level=2)
                 flag = 1
             except BaseException as ex:
                 print('файл не найден, попробуйте ещё раз', ex)
@@ -170,17 +170,32 @@ class Player(Entity):  # класс игрока
 
 
 class Enemy(Entity):
-    image = pg.image.load('data/img/mar.png')
+    image = {
+        'right': pg.image.load('data/img/dragon_right.png'),
+        'left': pg.image.load('data/img/dragon_left.png'),
+        'mushroom': pg.image.load('data/img/mushroom.png')
+    }
 
-    def __init__(self, pos, *groups, speed=-2, can_die=True):
-        super().__init__(pos, Enemy.image, *groups)
+
+    def __init__(self, pos, *groups, speed=-2, diff_level=1):
         self.speed = speed
-        self.can_die = can_die
+        self.diff_level = diff_level
+        if diff_level == 1:
+            super().__init__(pos, Enemy.image['mushroom'], *groups)
+            self.can_die = True
+        elif diff_level == 2:
+            super().__init__(pos, Enemy.image['right'], *groups)
+            self.can_die = False
 
     def ai(self, level):
         cant_step = self.step(self.speed, 0, level)
         if cant_step:
             self.speed *= cant_step
+            if self.diff_level == 2:
+                if self.speed < 0:
+                    self.image = Enemy.image['left']
+                else:
+                    self.image = Enemy.image['right']
         if pg.sprite.spritecollideany(self, level.player_group):  # обработка столкновение с игроком
             if self.rect.y > level.get_player().rect.y and self.can_die:
                 print('+1')

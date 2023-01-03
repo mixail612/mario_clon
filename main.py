@@ -21,7 +21,7 @@ def end_world(world_name=''):
     if world_name:
         level = Level(world_name)
     else:
-        level = Level(f'world{level_num}.txt')
+        level = Level(f'data/levels/{level_num}_lvl.txt')
 
 
 def end_game():
@@ -44,11 +44,12 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
         self.image = Tile.images[tile_type]
         self.rect = self.image.get_rect().move(tile_pos[0] * Tile.size,
                                                tile_pos[1] * Tile.size)
-        self.pos = tile_pos
         self.type = tile_type
 
     def step_camera(self, dx, dy):  # фметод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx, -1 * dy)
+    def get_pos(self):
+        return self.rect.x // 50, self.rect.y // 50
 
 
 class Level:  # класс уровня
@@ -73,11 +74,11 @@ class Level:  # класс уровня
                         elif sym == 'e':
                             Tile('empty', (x, y), self.tile_group)
                             enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                          speed=random.randint(20, 30) / 10, diff_level=1)
+                                          speed=random.randint(200, 350) / 100, diff_level=1)
                         elif sym == 'E':
                             Tile('empty', (x, y), self.tile_group)
                             enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                          speed=random.randint(30, 45) / 10, diff_level=2)
+                                          speed=random.randint(300, 500) / 100, diff_level=2)
         except BaseException as ex:
             end_game()
 
@@ -86,7 +87,7 @@ class Level:  # класс уровня
 
     def get_tile(self, pos):
         for tile in self.tile_group:
-            if pos == tile.pos:
+            if pos == tile.get_pos():
                 return tile
 
     def get_enemys(self):
@@ -217,7 +218,9 @@ class Enemy(Entity):
     def ai(self, level):
         cant_step = self.step(self.speed, 0, level)
         if cant_step:
-            self.speed *= cant_step
+            if not (level.get_tile((self.rect.x // 50 - 1, self.rect.y // 50)).type == 'wall' and
+                    level.get_tile((self.rect.x // 50 + 1, self.rect.y // 50)).type == 'wall'):
+                self.speed *= cant_step
             if self.diff_level == 2:
                 if self.speed < 0:
                     self.image = Enemy.image['left']
@@ -242,10 +245,10 @@ class Enemy(Entity):
         return 'enemy', (self.rect.x, self.rect.y)
 
 
-level = Level('world1.txt')
+level = Level('data/levels/1_lvl.txt')
 
 pg.init()
-size = width, height = 600, 450
+size = width, height = 1000, 650
 screen = pg.display.set_mode(size)
 
 clock = pg.time.Clock()
@@ -262,7 +265,7 @@ while running:
             running = False
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
-                level.get_player().jump(125)
+                level.get_player().jump(135)
 
     if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
         level.get_player().camera_step(-7, 0, level)

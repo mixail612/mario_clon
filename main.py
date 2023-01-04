@@ -4,6 +4,7 @@ import time as Time
 
 level_num = 1
 
+
 def is_negative(num):
     if num < 0:
         return -1
@@ -46,13 +47,11 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
                                                tile_pos[1] * Tile.size)
         self.type = tile_type
 
-    def step_camera(self, dx, dy):  # фметод перемещения для работы перемещения камеры
+    def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx, -1 * dy)
+
     def get_pos(self):
         return self.rect.x // 50, self.rect.y // 50
-
-
-_x, _y = (0, 0)
 
 
 class Level:  # класс уровня
@@ -73,15 +72,15 @@ class Level:  # класс уровня
                             Tile('end', (x, y), self.tile_group)
                         elif sym == 'u':
                             Tile('empty', (x, y), self.tile_group)
-                            player = Player((x * Tile.size, y * Tile.size), self.player_group)
+                            Player((x * Tile.size, y * Tile.size), self.player_group)
                         elif sym == 'e':
                             Tile('empty', (x, y), self.tile_group)
-                            enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                          speed=random.randint(200, 350) / 100, diff_level=1)
+                            Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
+                                  speed=random.randint(200, 350) / 100, diff_level=1)
                         elif sym == 'E':
                             Tile('empty', (x, y), self.tile_group)
-                            enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                          speed=random.randint(300, 500) / 100, diff_level=2)
+                            Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
+                                  speed=random.randint(300, 500) / 100, diff_level=2)
         except BaseException as ex:
             end_game()
 
@@ -254,10 +253,6 @@ class Enemy(Entity):
                 # Дописать окно смерти
             self.kill()
             return
-        '''for enemy in level.get_enemys():  # столкновение с другим иврагом
-            if pg.sprite.spritecollideany(self, (enemy,)) and \
-                    self != enemy and is_negative(self.speed) == is_negative(enemy.speed):
-                self.step(-self.speed, 0, level)'''
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx, -1 * dy)
@@ -265,7 +260,8 @@ class Enemy(Entity):
     def get_info(self):
         return 'enemy', (self.rect.x, self.rect.y)
 
-_level = 'data/levels/1_lvl.txt'
+
+level_path = 'data/levels/1_lvl.txt'
 level = Level('data/levels/1_lvl.txt')
 
 pg.init()
@@ -305,19 +301,19 @@ while running:
             enemy.ai(level)
             enemy.physic(dt)
 
-        _score = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
-        _hp = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))
+        score_label = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
+        hp_label = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))
 
         level.draw(screen)
-        screen.blit(_score, (30, 650))
-        screen.blit(_hp, (870, 650))
+        screen.blit(score_label, (30, 650))
+        screen.blit(hp_label, (870, 650))
     else:
         game_over = font.render(f"Game over!", False, (255, 255, 255), (0, 0, 0))
-        _score_ = font.render(f"Your score: {Player.all_score}!", True, (255, 255, 255), (0, 0, 0))
+        final_score = font.render(f"Your score: {Player.all_score}!", True, (255, 255, 255), (0, 0, 0))
         advice = font.render(f"Press any button to continue", True, (255, 255, 255), (0, 0, 0))
 
         screen.blit(game_over, (390, 250))
-        screen.blit(_score_, (375, 300))
+        screen.blit(final_score, (375, 300))
         screen.blit(advice, (255, 400))
 
         Time.sleep(0.8)
@@ -328,7 +324,7 @@ while running:
                 Player.hp = 3
                 Player.score = 0
                 Player.all_score = 0
-                level = Level(_level)
+                level = Level(level_path)
 
     pg.display.flip()
 

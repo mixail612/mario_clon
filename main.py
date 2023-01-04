@@ -320,7 +320,7 @@ while running:
         screen.blit(_score_, (375, 300))
         screen.blit(advice, (255, 400))
 
-        Time.sleep(1)
+        Time.sleep(0.8)
 
         for event in pg.event.get():
             if event.type == pg.KEYDOWN or event.type == pg.MOUSEBUTTONDOWN:

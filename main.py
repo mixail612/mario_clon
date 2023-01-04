@@ -52,6 +52,9 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
         return self.rect.x // 50, self.rect.y // 50
 
 
+_x, _y = (0, 0)
+
+
 class Level:  # класс уровня
     def __init__(self, level_path):
         self.tile_group = pg.sprite.Group()
@@ -153,6 +156,10 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
 class Player(Entity):  # класс игрока
 
     image = pg.image.load('data/img/mar.png')
+    hp = 3
+    score = 0
+    all_score = 0
+    is_died = False
 
     def __init__(self, pos, *groups):
         super().__init__(pos, Player.image, *groups)
@@ -226,11 +233,25 @@ class Enemy(Entity):
                     self.image = Enemy.image['left']
                 else:
                     self.image = Enemy.image['right']
+
         if pg.sprite.spritecollideany(self, level.player_group):  # обработка столкновение с игроком
             if self.rect.y - self.rect.height // 2 > level.get_player().rect.y and self.can_die:
                 print('+1')
+                Player.score += 10
+                Player.all_score += 10
+
+                if Player.score == 100:
+                    Player.score = 0
+                    Player.hp += 1
+
             else:
                 print('-1')
+                Player.hp -= 1
+
+                if Player.hp == 0:
+                    print('gg')
+                    Player.is_died = True
+                # Дописать окно смерти
             self.kill()
             return
         '''for enemy in level.get_enemys():  # столкновение с другим иврагом
@@ -244,11 +265,15 @@ class Enemy(Entity):
     def get_info(self):
         return 'enemy', (self.rect.x, self.rect.y)
 
-
+_level = 'data/levels/1_lvl.txt'
 level = Level('data/levels/1_lvl.txt')
 
 pg.init()
-size = width, height = 1000, 650
+
+font = pg.font.SysFont('Super Mario 128', 50)
+
+size = width, height = 1000, 700
+
 screen = pg.display.set_mode(size)
 
 clock = pg.time.Clock()
@@ -260,26 +285,51 @@ while running:
     screen.fill('black')
     dt = clock.tick(30) / 1000
 
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
-                level.get_player().jump(135)
+    if not Player.is_died:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                running = False
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
+                    level.get_player().jump(135)
 
-    if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
-        level.get_player().camera_step(-7, 0, level)
-    if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
-        level.get_player().camera_step(7, 0, level)
+        if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
+            level.get_player().camera_step(-7, 0, level)
+        if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
+            level.get_player().camera_step(7, 0, level)
 
-    # физика падения
-    level.get_player().physic(dt)
+        # физика падения
+        level.get_player().physic(dt)
 
-    for enemy in level.enemy_group:  # изика и ии противника
-        enemy.ai(level)
-        enemy.physic(dt)
+        for enemy in level.enemy_group:  # физика и ии противника
+            enemy.ai(level)
+            enemy.physic(dt)
 
-    level.draw(screen)
+        _score = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
+        _hp = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))
+
+        level.draw(screen)
+        screen.blit(_score, (30, 650))
+        screen.blit(_hp, (870, 650))
+    else:
+        game_over = font.render(f"Game over!", False, (255, 255, 255), (0, 0, 0))
+        _score_ = font.render(f"Your score: {Player.all_score}!", True, (255, 255, 255), (0, 0, 0))
+        advice = font.render(f"Press any button to continue", True, (255, 255, 255), (0, 0, 0))
+
+        screen.blit(game_over, (390, 250))
+        screen.blit(_score_, (375, 300))
+        screen.blit(advice, (255, 400))
+
+        Time.sleep(1)
+
+        for event in pg.event.get():
+            if event.type == pg.KEYDOWN or event.type == pg.MOUSEBUTTONDOWN:
+                Player.is_died = False
+                Player.hp = 3
+                Player.score = 0
+                Player.all_score = 0
+                level = Level(_level)
+
     pg.display.flip()
 
 pg.quit()

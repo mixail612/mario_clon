@@ -31,11 +31,15 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
         self.rect = self.rect.move(-1 * dx, -1 * dy)
 
 
+_x, _y = (0, 0)
+
+
 class Level:  # класс уровня
     def __init__(self, level_path):
         self.tile_group = pg.sprite.Group()
         self.player_group = pg.sprite.Group()
         self.enemy_group = pg.sprite.Group()
+
         flag = 0
         while flag == 0:
             try:
@@ -49,15 +53,16 @@ class Level:  # класс уровня
                                 Tile('wall', (x, y), self.tile_group)
                             elif sym == 'u':
                                 Tile('empty', (x, y), self.tile_group)
+                                _x, _y = (x * Tile.size, y * Tile.size)
                                 player = Player((x * Tile.size, y * Tile.size), self.player_group)
                             elif sym == 'e':
                                 Tile('empty', (x, y), self.tile_group)
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(20, 30) / 10)
+                                              speed=random.randint(20, 30) / 10, diff_level=1)
                             elif sym == 'E':
                                 Tile('empty', (x, y), self.tile_group)
                                 enemy = Enemy((x * Tile.size, y * Tile.size), self.enemy_group,
-                                              speed=random.randint(30, 45) / 10, can_die=False)
+                                              speed=random.randint(30, 45) / 10, diff_level=2)
                 flag = 1
             except BaseException as ex:
                 print('файл не найден, попробуйте ещё раз', ex)
@@ -126,6 +131,10 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
 class Player(Entity):  # класс игрока
 
     image = pg.image.load('data/img/mar.png')
+    hp = 3
+    score = 0
+    all_score = 0
+    is_died = False
 
     def __init__(self, pos, *groups):
         super().__init__(pos, Player.image, *groups)
@@ -150,7 +159,7 @@ class Player(Entity):  # класс игрока
         return 'player', (self.rect.x, self.rect.y)
 
     def physic(self, dt):
-        print(self.time, dt, self.jump_speed * (dt + 0.001) - self.time, self.jump_speed * (dt))
+        # print(self.time, dt, self.jump_speed * (dt + 0.001) - self.time, self.jump_speed * (dt))
         if self.step(0, self.time * 50, level) == -1:
             self.time = 0
             self.jump_speed = 0
@@ -167,25 +176,51 @@ class Player(Entity):  # класс игрока
             self.time = 0
 
 
-
-
 class Enemy(Entity):
-    image = pg.image.load('data/img/mar.png')
+    image = {
+        'right': pg.image.load('data/img/dragon_right.png'),
+        'left': pg.image.load('data/img/dragon_left.png'),
+        'mushroom': pg.image.load('data/img/mushroom.png')
+    }
 
-    def __init__(self, pos, *groups, speed=-2, can_die=True):
-        super().__init__(pos, Enemy.image, *groups)
+    def __init__(self, pos, *groups, speed=-2, diff_level=1):
         self.speed = speed
-        self.can_die = can_die
+        self.diff_level = diff_level
+        if diff_level == 1:
+            super().__init__(pos, Enemy.image['mushroom'], *groups)
+            self.can_die = True
+        elif diff_level == 2:
+            super().__init__(pos, Enemy.image['right'], *groups)
+            self.can_die = False
 
     def ai(self, level):
         cant_step = self.step(self.speed, 0, level)
         if cant_step:
             self.speed *= cant_step
+            if self.diff_level == 2:
+                if self.speed < 0:
+                    self.image = Enemy.image['left']
+                else:
+                    self.image = Enemy.image['right']
+
         if pg.sprite.spritecollideany(self, level.player_group):  # обработка столкновение с игроком
-            if self.rect.y > level.get_player().rect.y and self.can_die:
+            if self.rect.y + 20 >= level.get_player().rect.bottom and self.can_die:
                 print('+1')
+                Player.score += 10
+                Player.all_score += 10
+
+                if Player.score == 100:
+                    Player.score = 0
+                    Player.hp += 1
+
             else:
                 print('-1')
+                Player.hp -= 1
+
+                if Player.hp == 0:
+                    print('gg')
+                    Player.is_died = True
+                # Дописать окно смерти
             self.kill()
             return
         '''for enemy in level.get_enemys():  # столкновение с другим иврагом
@@ -200,10 +235,14 @@ class Enemy(Entity):
         return 'enemy', (self.rect.x, self.rect.y)
 
 
-level = Level(input())
+_level = input()
+level = Level(_level)
 
 pg.init()
-size = width, height = 600, 450
+
+font = pg.font.SysFont('Super Mario 128', 50)
+
+size = width, height = 1000, 700
 screen = pg.display.set_mode(size)
 
 clock = pg.time.Clock()
@@ -215,26 +254,49 @@ while running:
     screen.fill('black')
     dt = clock.tick(30) / 1000
 
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
-                level.get_player().jump(125)
+    if not Player.is_died:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                running = False
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_w or event.key == pg.K_UP:  # прыжок
+                    level.get_player().jump(125)
 
-    if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
-        level.get_player().camera_step(-7, 0, level)
-    if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
-        level.get_player().camera_step(7, 0, level)
+        if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
+            level.get_player().camera_step(-7, 0, level)
+        if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
+            level.get_player().camera_step(7, 0, level)
 
-    # физика падения
-    level.get_player().physic(dt)
+        # физика падения
+        level.get_player().physic(dt)
 
-    for enemy in level.enemy_group: # изика и ии противника
-        enemy.ai(level)
-        enemy.physic(dt)
+        for enemy in level.enemy_group:  # физика и ии противника
+            enemy.ai(level)
+            enemy.physic(dt)
 
-    level.draw(screen)
+        _score = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
+        _hp = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))
+
+        level.draw(screen)
+        screen.blit(_score, (30, 650))
+        screen.blit(_hp, (870, 650))
+    else:
+        game_over = font.render(f"Game over!", False, (255, 255, 255), (0, 0, 0))
+        _score_ = font.render(f"Your score: {Player.all_score}!", True, (255, 255, 255), (0, 0, 0))
+        advice = font.render(f"Press any button to continue", True, (255, 255, 255), (0, 0, 0))
+
+        screen.blit(game_over, (390, 250))
+        screen.blit(_score_, (375, 300))
+        screen.blit(advice, (255, 400))
+
+        for event in pg.event.get():
+            if event.type == pg.KEYDOWN or event.type == pg.MOUSEBUTTONDOWN:
+                Player.is_died = False
+                Player.hp = 3
+                Player.score = 0
+                Player.all_score = 0
+                level = Level(_level)
+
     pg.display.flip()
 
 pg.quit()

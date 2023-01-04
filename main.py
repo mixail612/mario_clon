@@ -36,7 +36,8 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
     images = {
         'wall': pg.image.load('data/img/box.png'),
         'empty': pg.image.load('data/img/grass.png'),
-        'end': pg.image.load('data/img/exit.png')
+        'end': pg.image.load('data/img/door.png'),
+        'open_door': pg.image.load('data/img/open_door.png')
     }
     size = 50
 
@@ -69,6 +70,7 @@ class Level:  # класс уровня
                         elif sym == '#':
                             Tile('wall', (x, y), self.tile_group)
                         elif sym == 'w':
+                            Tile('empty', (x, y), self.tile_group)
                             Tile('end', (x, y), self.tile_group)
                         elif sym == 'u':
                             Tile('empty', (x, y), self.tile_group)
@@ -173,6 +175,9 @@ class Player(Entity):  # класс игрока
             if tile.type == 'wall':
                 flag = 0
             if tile.type == 'end':
+                tile.image = Tile.images['open_door']
+                level.draw(screen)
+                pg.display.flip()
                 end_world()
         self.rect = self.rect.move(-1 * dx, -1 * dy)
         if flag:
@@ -194,6 +199,9 @@ class Player(Entity):  # класс игрока
             self.time += dt
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'end':
+                tile.image = Tile.images['open_door']
+                level.draw(screen)
+                pg.display.flip()
                 end_world()
 
     def jump(self, height):

@@ -45,6 +45,7 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
 
     images = {
         'wall': pg.image.load('data/img/box.png'),
+        'spike': pg.image.load('data/img/spike_grass.png'),
         'empty': pg.image.load('data/img/grass.png'),
         'end': pg.image.load('data/img/door.png'),
         'open_door': pg.image.load('data/img/open_door.png')
@@ -79,6 +80,8 @@ class Level:  # класс уровня
                             Tile('empty', (x, y), self.tile_group)
                         elif sym == '#':
                             Tile('wall', (x, y), self.tile_group)
+                        elif sym == '>':
+                            Tile('spike', (x, y), self.tile_group)
                         elif sym == 'w':
                             Tile('empty', (x, y), self.tile_group)
                             Tile('end', (x, y), self.tile_group)
@@ -153,6 +156,9 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                                                                self.rect.y)
                     return - 1
 
+            elif tile.type == 'spike':
+                minus_hp(True if (pg.time.get_ticks() - now) / 1000 <= 1.5 else False, 2)
+
     def physic(self, dt):  # метод отвечающий за физику падения
 
         if self.step(0, self.time * 50, level) == -1:
@@ -162,6 +168,34 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
 
     def get_pos(self):
         return self.rect.x, self.rect.y
+
+
+now = 100
+
+
+def minus_hp(hit=False, type=1):
+    global now
+
+    if type == 1:
+        print(-1)
+        Player.hp -= 1
+
+    if type == 2 and not hit:
+        Player.hp -= 1
+        print(-1.2)
+        now = pg.time.get_ticks()
+
+    # Player.image = pg.image.load('data/img/hit_mar.png')
+    # Enemy.is_hit = True
+    # Enemy.start = pg.time.get_ticks()
+
+    if Player.hp == 0:
+        print('gg')
+        Player.is_died = True
+
+        music.load("data/sounds/death_sound.mp3")
+        music.set_volume(0.5)
+        music.play(1)
 
 
 class Player(Entity):  # класс игрока
@@ -237,9 +271,9 @@ class Enemy(Entity):
         'mushroom': pg.image.load('data/img/mushroom.png')
     }
 
-    now = 0
     # start = 0
     # is_hit = False
+    count = 0
 
     def __init__(self, pos, *groups, speed=-2, diff_level=1):
         self.speed = speed
@@ -273,26 +307,19 @@ class Enemy(Entity):
                     Player.score = 0
                     Player.hp += 1
 
-            else:
-                print('-1')
-                Player.hp -= 1
-
-                # Player.image = pg.image.load('data/img/hit_mar.png')
-                # Enemy.is_hit = True
-                # Enemy.start = pg.time.get_ticks()
-
-                if Player.hp == 0:
-                    print('gg')
-                    Player.is_died = True
-
-                    music.load("data/sounds/death_sound.mp3")
-                    music.set_volume(0.5)
-                    music.play(1)
-
-            if self.can_die:
                 self.kill()
+
+            elif self.can_die:
+                minus_hp()
+                self.kill()
+
             else:
-                Player.now = pg.time.get_ticks()
+                Enemy.count += 1
+                if Enemy.count == 1:
+                    minus_hp(False, 2)
+                else:
+                    minus_hp(True if 0 < (pg.time.get_ticks() - now) / 1000 <= 1.5 else False, 2)
+
             return
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры

@@ -156,9 +156,6 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                                                                self.rect.y)
                     return - 1
 
-            elif tile.type == 'spike':
-                minus_hp(True if (pg.time.get_ticks() - now) / 1000 <= 1.5 else False, 2)
-
     def physic(self, dt):  # метод отвечающий за физику падения
 
         if self.step(0, self.time * 50, level) == -1:
@@ -219,6 +216,10 @@ class Player(Entity):  # класс игрока
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
                 flag = 0
+
+            if tile.type == 'spike':
+                minus_hp(True if (pg.time.get_ticks() - now) / 1000 <= 1.5 else False, 2)
+
             if tile.type == 'end':
                 tile.image = Tile.images['open_door']
                 level.draw(screen)
@@ -318,6 +319,7 @@ class Enemy(Entity):
                 if Enemy.count == 1:
                     minus_hp(False, 2)
                 else:
+                    # когда стоит неподвижно, то урон не наносится. Не баг, а фича
                     minus_hp(True if 0 < (pg.time.get_ticks() - now) / 1000 <= 1.5 else False, 2)
 
             return

@@ -194,8 +194,6 @@ class Player(Entity):  # класс игрока
                 music.set_volume(0.5)
                 music.play(1)
 
-                # Time.sleep(7) <--- Из-за этого не рисуются сущности
-
                 end_world()
 
         self.rect = self.rect.move(-1 * dx, -1 * dy)
@@ -408,6 +406,7 @@ while running:
                 Player.score = 0
                 Player.all_score = 0
                 level = Level(level_path)
+
                 timer = 150
                 ftime = pg.time.get_ticks()
 

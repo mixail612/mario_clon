@@ -15,10 +15,20 @@ def is_negative(num):
 
 
 def end_world(world_name=''):
-    global level, level_num
+    global level, level_num, ftime, timer
     level_num += 1
     Time.sleep(0.5)
     level.__del__()
+    Player.score = 0
+    Player.hp = 3
+    Player.all_score = 0
+    ftime = pg.time.get_ticks()
+    timer = 150
+
+    music.load("data/sounds/main_track.mp3")
+    music.set_volume(0.5)
+    music.play(-1)
+
     if world_name:
         level = Level(world_name)
     else:
@@ -171,6 +181,7 @@ class Player(Entity):  # класс игрока
     def camera_step(self, dx, dy, level):  # метод перемещения камеры
         self.rect = self.rect.move(dx, dy)
         flag = 1
+
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
                 flag = 0
@@ -178,8 +189,15 @@ class Player(Entity):  # класс игрока
                 tile.image = Tile.images['open_door']
                 level.draw(screen)
                 pg.display.flip()
+
+                music.load("data/sounds/win_track.mp3")
+                music.set_volume(0.5)
+                music.play(1)
+
                 end_world()
+
         self.rect = self.rect.move(-1 * dx, -1 * dy)
+
         if flag:
             for tile in level.get_tiles():
                 tile.step_camera(dx, dy)
@@ -219,6 +237,9 @@ class Enemy(Entity):
         'mushroom': pg.image.load('data/img/mushroom.png')
     }
 
+    # start = 0
+    # is_hit = False
+
     def __init__(self, pos, *groups, speed=-2, diff_level=1):
         self.speed = speed
         self.diff_level = diff_level
@@ -255,10 +276,18 @@ class Enemy(Entity):
                 print('-1')
                 Player.hp -= 1
 
+                # Player.image = pg.image.load('data/img/hit_mar.png')
+                # Enemy.is_hit = True
+                # Enemy.start = pg.time.get_ticks()
+
                 if Player.hp == 0:
                     print('gg')
                     Player.is_died = True
-                # Дописать окно смерти
+
+                    music.load("data/sounds/death_sound.mp3")
+                    music.set_volume(0.5)
+                    music.play(1)
+
             self.kill()
             return
 
@@ -273,6 +302,17 @@ level_path = 'data/levels/1_lvl.txt'
 level = Level('data/levels/1_lvl.txt')
 
 pg.init()
+
+ftime = pg.time.get_ticks()
+timer = 150
+
+music = pg.mixer.music
+music.load("data/sounds/main_track.mp3")
+music.play(-1)
+music.set_volume(0.5)
+
+is_other_music = False
+tooMuch_time = False
 
 font = pg.font.SysFont('Super Mario 128', 50)
 
@@ -289,6 +329,21 @@ while running:
     screen.fill('black')
     dt = clock.tick(30) / 1000
 
+    if (pg.time.get_ticks() - ftime) // 1000 == 1 and not Player.is_died:
+        ftime = pg.time.get_ticks()
+        timer -= 1
+
+        if timer <= 60 and not is_other_music:
+            music.load("data/sounds/hurry_track.mp3")
+            music.play(-1)
+            is_other_music = True
+
+        elif timer <= 0:
+            Player.is_died = True
+            music.load("data/sounds/death_sound.mp3")
+            music.play(1)
+            tooMuch_time = True
+
     if not Player.is_died:
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -302,6 +357,14 @@ while running:
         if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
             level.get_player().camera_step(7, 0, level)
 
+        # if Enemy.is_hit:
+        #     sec = (pg.time.get_ticks() - Enemy.start) / 1000
+        #
+        #     if sec >= 1:
+        #         print(1)
+        #         Player.image = pg.image.load('data/img/mar.png')
+        #         Enemy.is_hit = False
+
         # физика падения
         level.get_player().physic(dt)
 
@@ -311,28 +374,44 @@ while running:
 
         score_label = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
         hp_label = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))
+        time_label = font.render(f"Time: {timer}", False, (255, 255, 255), (0, 0, 0))
 
         level.draw(screen)
-        screen.blit(score_label, (30, 650))
-        screen.blit(hp_label, (870, 650))
+        screen.blit(time_label, (440, 660))
+        screen.blit(score_label, (30, 660))
+        screen.blit(hp_label, (870, 660))
     else:
         game_over = font.render(f"Game over!", False, (255, 255, 255), (0, 0, 0))
         final_score = font.render(f"Your score: {Player.all_score}!", True, (255, 255, 255), (0, 0, 0))
+        if not tooMuch_time:
+            time_table = font.render(f"Time: {150 - timer}", True, (255, 255, 255), (0, 0, 0))
+            screen.blit(time_table, (440, 350))
+        else:
+            time_table = font.render(f"Time: Too Much!", True, (255, 150, 150), (0, 0, 0))
+            screen.blit(time_table, (370, 350))
         advice = font.render(f"Press any button to continue", True, (255, 255, 255), (0, 0, 0))
 
-        screen.blit(game_over, (390, 250))
-        screen.blit(final_score, (375, 300))
-        screen.blit(advice, (255, 400))
+        screen.blit(game_over, (405, 250))
+        screen.blit(final_score, (385, 300))
+        screen.blit(advice, (267, 425))
 
         Time.sleep(0.8)
 
         for event in pg.event.get():
+            if event.type == pg.QUIT:
+                running = False
             if event.type == pg.KEYDOWN or event.type == pg.MOUSEBUTTONDOWN:
                 Player.is_died = False
                 Player.hp = 3
                 Player.score = 0
                 Player.all_score = 0
                 level = Level(level_path)
+
+                timer = 150
+                ftime = pg.time.get_ticks()
+
+                music.load("data/sounds/main_track.mp3")
+                music.play(-1)
 
     pg.display.flip()
 

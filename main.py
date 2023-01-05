@@ -237,6 +237,7 @@ class Enemy(Entity):
         'mushroom': pg.image.load('data/img/mushroom.png')
     }
 
+    now = 0
     # start = 0
     # is_hit = False
 
@@ -288,7 +289,10 @@ class Enemy(Entity):
                     music.set_volume(0.5)
                     music.play(1)
 
-            self.kill()
+            if self.can_die:
+                self.kill()
+            else:
+                Player.now = pg.time.get_ticks()
             return
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры

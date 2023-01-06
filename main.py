@@ -17,16 +17,25 @@ def is_negative(num):
 def end_world(world_name=''):
     global level, level_num, ftime, timer
     level_num += 1
+
     if level_num > 3:
         end_game()
+
     else:
         Time.sleep(0.5)
         level.__del__()
-        Player.levels_score += Player.score + Player.all_score
+
+        if Player.deaths <= 3:
+            Player.levels_score += Player.score + Player.all_score + Player.hp - Player.deaths * 100 + \
+                                   ((150 - timer) * 2)
+        else:
+            Player.levels_score += Player.score + Player.all_score + ((150 - timer) * 2)
+
         Player.score = 0
-        Player.hp = 3
+        Player.hp += 1
         Player.all_score = 0
         Player.all_time += 150 - timer
+        Player.deaths = 0
         ftime = pg.time.get_ticks()
         timer = 150
 
@@ -36,6 +45,7 @@ def end_world(world_name=''):
 
         if world_name:
             level = Level(world_name)
+
         else:
             level = Level(f'data/levels/{level_num}_lvl.txt')
 
@@ -201,6 +211,7 @@ def minus_hp(hit=False, type=1):
     if Player.hp == 0:
         print('gg')
         Player.is_died = True
+        Player.deaths += 1
 
         music.load("data/sounds/death_sound.mp3")
         music.set_volume(0.5)
@@ -215,6 +226,7 @@ class Player(Entity):  # класс игрока
     all_score = 0
     all_time = 0
     levels_score = 0
+    deaths = 0
     is_died = False
 
     def __init__(self, pos, *groups):
@@ -230,9 +242,6 @@ class Player(Entity):  # класс игрока
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'wall':
                 flag = 0
-
-            if tile.type == 'spike' and level.get_player().rect.bottom >= tile.rect.center[1]:
-                minus_hp(True if (pg.time.get_ticks() - now) / 1000 <= 1.5 else False, 2)
 
             if tile.type == 'end':
                 tile.image = Tile.images['open_door']
@@ -392,7 +401,7 @@ while running:
                                     (0, 0, 0))
 
         screen.blit(congrat_label, (422, 250))
-        screen.blit(score_label, (425, 300))
+        screen.blit(score_label, (415, 300))
         screen.blit(alltime_label, (400, 350))
 
     else:

@@ -271,6 +271,9 @@ class Player(Entity):  # класс игрока
                 pg.display.flip()
                 end_world()
 
+            if tile.type == 'spike' and level.get_player().rect.bottom >= tile.rect.center[1]:
+                minus_hp(True if (pg.time.get_ticks() - now) / 1000 <= 2 else False, 2)
+
     def jump(self, height):
         if self.can_jump > 0:
             self.jump_speed = height ** 0.5

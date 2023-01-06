@@ -26,7 +26,7 @@ def end_world(world_name=''):
         level.__del__()
 
         if Player.deaths <= 3:
-            Player.levels_score += Player.score + Player.all_score + Player.hp - Player.deaths * 100 + \
+            Player.levels_score += Player.score + Player.all_score + (Player.hp - Player.deaths) * 100 + \
                                    ((150 - timer) * 2)
         else:
             Player.levels_score += Player.score + Player.all_score + ((150 - timer) * 2)

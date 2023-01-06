@@ -56,6 +56,7 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
 
     images = {
         'wall': pg.image.load('data/img/box.png'),
+        'brick': pg.image.load('data/img/brick.png'),
         'spike': pg.image.load('data/img/spike_grass.png'),
         'empty': pg.image.load('data/img/grass.png'),
         'end': pg.image.load('data/img/door.png'),
@@ -91,6 +92,9 @@ class Level:  # класс уровня
                             Tile('empty', (x, y), self.tile_group)
                         elif sym == '#':
                             Tile('wall', (x, y), self.tile_group)
+                        elif sym == 'b':
+                            Tile('empty', (x, y), self.tile_group)
+                            Tile('brick', (x, y), self.tile_group)
                         elif sym == '>':
                             Tile('spike', (x, y), self.tile_group)
                         elif sym == 'w':
@@ -149,12 +153,18 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
         self.rect = self.rect.move(dx, dy)
 
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
-            if tile.type == 'wall':
+
+            if tile.type == 'wall' or tile.type == 'brick':
                 # в случае если перемещение происходит на препятствие,
                 # сущность перемещается на последний пиксель перед ним
                 if dy:
+
                     if dy < 0:
                         self.rect = self.image.get_rect().move(self.rect.x, tile.rect.y + Tile.size)
+                        if tile.type == 'brick' and self.rect.x >= tile.rect.x:
+                            tile.kill()
+                            level.get_player().jump_speed = 0
+                            level.get_player().time = 0
                     else:
                         self.rect = self.image.get_rect().move(self.rect.x,
                                                                tile.rect.y - Tile.size + (Tile.size - self.rect.height))
@@ -228,7 +238,7 @@ class Player(Entity):  # класс игрока
         flag = 1
 
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
-            if tile.type == 'wall':
+            if tile.type == 'wall' or tile.type == 'brick':
                 flag = 0
 
             if tile.type == 'spike' and level.get_player().rect.bottom >= tile.rect.center[1]:

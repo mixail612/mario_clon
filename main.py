@@ -1,9 +1,24 @@
 import pygame as pg
 import random
 import time as Time
-
+import sys
 level_num = 1
 
+
+FPS = 50
+
+# заставка
+def start_screen(width, height,screen, clock):
+    fon = pg.transform.scale(pg.image.load('data/img/start.png'), (width, height))
+    screen.blit(fon, (0, 0))
+
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.KEYDOWN or \
+                    event.type == pg.MOUSEBUTTONDOWN:
+                return  # начинаем игру
+        pg.display.flip()
+        clock.tick(FPS)
 
 def is_negative(num):
     if num < 0:
@@ -374,6 +389,11 @@ pg.init()
 
 ftime = pg.time.get_ticks()
 timer = 150
+clock = pg.time.Clock()
+
+size = width, height = 1000, 700
+screen = pg.display.set_mode(size)
+start_screen(width, height , screen, clock)
 
 music = pg.mixer.music
 music.load("data/sounds/main_track.mp3")
@@ -386,11 +406,7 @@ is_end = False
 
 font = pg.font.SysFont('Super Mario 128', 50)
 
-size = width, height = 1000, 700
 
-screen = pg.display.set_mode(size)
-
-clock = pg.time.Clock()
 running = True
 jump = 0
 time = 0

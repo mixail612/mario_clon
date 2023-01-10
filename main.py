@@ -112,7 +112,7 @@ def end_world(world_name=''):   # завершение уровня и подг�
     if level_num > 3:
         end_game()
     else:
-        Time.sleep(0.5)
+        # Time.sleep(0.5)
         level.__del__()
 
         if Player.deaths <= 3:
@@ -128,6 +128,9 @@ def end_world(world_name=''):   # завершение уровня и подг�
         Player.deaths = 0
         ftime = pg.time.get_ticks()
         timer = time_per_lever
+
+        Time.sleep(6)
+        clock.tick()
 
         music.load("data/sounds/main_track.mp3")
         music.set_volume(0.5)
@@ -261,11 +264,11 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                 if dy:
                     if dy < 0:
                         self.rect = self.image.get_rect().move(self.rect.x, tile.rect.y + Tile.size)
-                        if tile.type == 'brick' and self.rect.x >= tile.rect.x:
+                        if tile.type == 'brick' and self.rect.x + self.rect.width > tile.rect.x:
                             tile.kill()
                             level.get_player().jump_speed = 0
                             level.get_player().time = 0
-                        elif tile.type == 'question' and self.rect.x >= tile.rect.x:
+                        elif tile.type == 'question' and self.rect.x + self.rect.width > tile.rect.x:
                             tile.kill()
                             level.get_player().jump_speed = 0
                             level.get_player().time = 0
@@ -390,12 +393,13 @@ class Player(Entity):  # класс игрока
         return 'player', (self.rect.x, self.rect.y)
 
     def physic(self, delta_t):
+        level.get_player().step(0, -self.jump_speed * (delta_t + 0.001), level)
         if self.step(0, self.time * 50, level) == -1:
+            level.get_player().step(0, self.jump_speed * (delta_t + 0.001), level)
             self.time = 0
             self.jump_speed = 0
             self.can_jump = 2
         else:
-            level.get_player().step(0, -self.jump_speed * (delta_t + 0.001) * 50, level)
             self.time += delta_t
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'end':
@@ -409,7 +413,7 @@ class Player(Entity):  # класс игрока
 
     def jump(self, h):
         if self.can_jump > 0:
-            self.jump_speed = h ** 0.5
+            self.jump_speed = h ** 0.5 * Tile.size
             level.get_player().step(0, -0.1, level)
             self.can_jump -= 1
             self.time = 0

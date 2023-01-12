@@ -38,7 +38,7 @@ def start_screen(w, h, scrn, msc, clk):
                     exit()
                 # кликнули над кнопкой START
                 elif 80 <= mouse[0] <= 80 + 200 and 3 * h / 4 - 165 + 5 <= mouse[1] <= 3 * h / 4 - 165 + 5 + 50:
-                    if user_text == '':  # пyстое имя нельзя
+                    if user_text == '':   # пyстое имя нельзя
                         color_user_label = (255, 0, 0)
                         break
                     return   # начинаем игру
@@ -163,15 +163,19 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
     }
     size = tile_size
 
-    def __init__(self, tile_type, tile_pos, *groups):
+    def __init__(self, tile_type, tile_pos, *groups, in_pixels = 0):
         super().__init__(*groups)
         self.image = Tile.images[tile_type]
-        self.rect = self.image.get_rect().move(tile_pos[0] * self.size,
-                                               tile_pos[1] * self.size)
+        if in_pixels:
+            self.rect = self.image.get_rect().move(tile_pos[0], tile_pos[1])
+        else:
+            self.rect = self.image.get_rect().move(tile_pos[0] * Tile.size, tile_pos[1] * Tile.size)
         self.type = tile_type
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx, -1 * dy)
+        self.rect = self.image.get_rect().move(self.rect.x,
+                                               self.rect.y)
 
     def get_pos(self):   # номер плитки по горизонтали и вертикали
         return self.rect.x // tile_size, self.rect.y // tile_size
@@ -243,8 +247,8 @@ class Level:  # класс уровня
         for enemy in self.enemy_group:
             enemy.kill()
 
-    def add_tile(self, x, y, tile_type):  # добавить стену/кирпичи на указанную позицию
-        Tile(tile_type, (x // tile_size, y // tile_size), self.tile_group)
+    def add_tile(self, x, y, tile_type):  # добавить тайл на указанную позицию
+        Tile(tile_type, (x, y), self.tile_group, in_pixels=1)
 
 
 class Entity(pg.sprite.Sprite):  # базовый класс движущихся сущностей
@@ -261,30 +265,34 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
             if tile.type == 'wall' or tile.type == 'brick' or tile.type == 'question':
                 # в случае если перемещение происходит на препятствие,
                 # сущность перемещается на последний пиксель перед ним
+
                 if dy:
                     if dy < 0:
                         self.rect = self.image.get_rect().move(self.rect.x, tile.rect.y + Tile.size)
-                        if tile.type == 'brick' and self.rect.x + self.rect.width > tile.rect.x:
-                            tile.kill()
-                            level.get_player().jump_speed = 0
-                            level.get_player().time = 0
-                        elif tile.type == 'question' and self.rect.x + self.rect.width > tile.rect.x:
-                            tile.kill()
-                            level.get_player().jump_speed = 0
-                            level.get_player().time = 0
-                            rnd_val = random.randint(0, 9)
-                            if rnd_val in (4, 5):   # добавить жизнь
-                                plus_hp()
-                                print("plаyer.hp+1")
-                            if rnd_val == 3:  # убрать жизнь
-                                minus_hp(False, 3)
-                                print("plаyer.hp-1")
-                            elif rnd_val in (0, 1, 2):  # превратить в кирпич
-                                level.add_tile(tile.rect.x + self.rect.width, tile.rect.y, 'brick')
-                            elif rnd_val in (6, 7):  # превратить в стену
-                                level.add_tile(tile.rect.x + self.rect.width, tile.rect.y, 'wall')
-                            else:
-                                print("пусто")
+                        if tile.rect.x < self.rect.x + self.rect.width and self.time * 50 < self.jump_speed * dt:
+                            if tile.type == 'brick':
+                                tile.kill()
+                                level.get_player().jump_speed = 0
+                                level.get_player().time = 0
+                            elif tile.type == 'question':
+                                tile.kill()
+                                level.get_player().jump_speed = 0
+                                level.get_player().time = 0
+                                rnd_val = random.randint(0, 9)
+                                if rnd_val in (4, 5):   # добавить жизнь
+                                    plus_hp()
+                                    print("plаyer.hp+1")
+                                if rnd_val == 3:  # убрать жизнь
+                                    minus_hp(False, 3)
+                                    print("plаyer.hp-1")
+                                elif rnd_val in (0, 1, 2):  # превратить в кирпич
+                                    level.add_tile(tile.rect.x, tile.rect.y, 'brick')
+                                    tile.kill()
+                                    print(1)
+                                elif rnd_val in (6, 7):  # превратить в стену
+                                    level.add_tile(tile.rect.x, tile.rect.y, 'wall')
+                                else:
+                                    print("пусто")
 
                     else:
                         self.rect = self.image.get_rect().move(self.rect.x,
@@ -298,7 +306,7 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                                                                self.rect.y)
                     return - 1
 
-    def physic(self, dt):  # метод отвечающий за физику падения
+    def physic(self):  # метод отвечающий за физику падения
         if self.step(0, self.time * 50, level) == -1:
             self.time = 0
         else:
@@ -393,7 +401,9 @@ class Player(Entity):  # класс игрока
         return 'player', (self.rect.x, self.rect.y)
 
     def physic(self, delta_t):
-        level.get_player().step(0, -self.jump_speed * (delta_t + 0.001), level)
+        if level.get_player().step(0, -self.jump_speed * delta_t, level) == -1:
+            self.jump_speed = 0
+            self.time = 0
         if self.step(0, self.time * 50, level) == -1:
             level.get_player().step(0, self.jump_speed * (delta_t + 0.001), level)
             self.time = 0
@@ -514,7 +524,6 @@ top5 = []
 
 pg.init()
 
-#ftime = pg.time.get_ticks()
 timer = time_per_lever
 clock = pg.time.Clock()
 
@@ -623,7 +632,7 @@ while running:
 
             for enemy in level.enemy_group:  # физика и ии противника
                 enemy.ai(level)
-                enemy.physic(dt)
+                enemy.physic()
 
             score_label = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
             hp_label = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))

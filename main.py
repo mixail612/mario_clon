@@ -4,13 +4,12 @@ import time as Time
 from datetime import datetime
 import sqlite3
 
-
 db_name = "data/DB/mario.db"
 level_num = 1
 tile_size = 50
 FPS = 30  # frames per second
-time_per_lever = 150  # время, отведенное на прохождение уровня
-saved_to_db = False   # флаг для однократного сохранения
+time_per_level = 150  # время, отведенное на прохождение уровня
+saved_to_db = False  # флаг для однократного сохранения
 user_text = ''
 
 
@@ -38,10 +37,10 @@ def start_screen(w, h, scrn, msc, clk):
                     exit()
                 # кликнули над кнопкой START
                 elif 80 <= mouse[0] <= 80 + 200 and 3 * h / 4 - 165 + 5 <= mouse[1] <= 3 * h / 4 - 165 + 5 + 50:
-                    if user_text == '':   # пyстое имя нельзя
+                    if user_text == '':  # пyстое имя нельзя
                         color_user_label = (255, 0, 0)
                         break
-                    return   # начинаем игру
+                    return  # начинаем игру
                 else:
                     # кликнули над полем ввода имени
                     if 230 <= mouse[0] <= 230 + text_w and 3 * h / 4 - 230 <= mouse[1] <= 3 * h / 4 - 230 + 50:
@@ -66,7 +65,7 @@ def start_screen(w, h, scrn, msc, clk):
         color_font = (255, 255, 255)
         ColorBtn = (0, 177, 32)
         ColorBtn1 = (127, 127, 127)
-        # отрисуем две кнопки qiut и start ("двойной" прямойгольник с тенью)
+        # отрисуем две кнопки quit и start ("двойной" прямойгольник с тенью)
         text_quit = BtnFont.render('Q U I T', True, color_font)
         text_start = BtnFont.render('S T A R T', True, color_font)
         pg.draw.rect(scrn, ColorBtn1, [85, 3 * h / 4 - 165 + 5, 200, 50])
@@ -96,6 +95,7 @@ def start_screen(w, h, scrn, msc, clk):
         pg.display.flip()
         clk.tick(FPS)
 
+
 # def is_negative(num):
 #    if num < 0:
 #        return -1
@@ -105,32 +105,36 @@ def start_screen(w, h, scrn, msc, clk):
 #        return 0
 
 
-def end_world(world_name=''):   # завершение уровня и подготовка к началу следующего
+def end_world(world_name=''):  # завершение уровня и подготовка к началу следующего
     global level, level_num, ftime, timer
     level_num += 1
 
     if level_num > 3:
         end_game()
     else:
-        # Time.sleep(0.5)
         level.__del__()
 
         if Player.deaths <= 3:
             Player.levels_score += Player.score + Player.all_score + (Player.hp - Player.deaths) * 100 + \
-                                   ((time_per_lever - timer) * 2)
+                                   ((time_per_level - timer) * 2)
         else:
-            Player.levels_score += Player.score + Player.all_score + ((time_per_lever - timer) * 2)
+            Player.levels_score += Player.score + Player.all_score + ((time_per_level - timer) * 2)
 
         Player.score = 0
         Player.hp += 1
         Player.all_score = 0
-        Player.all_time += time_per_lever - timer
+        Player.all_time += time_per_level - timer
         Player.deaths = 0
-        ftime = pg.time.get_ticks()
-        timer = time_per_lever
 
-        Time.sleep(6)
+        music.load("data/sounds/win_track.mp3")
+        music.set_volume(0.5)
+        music.play(1)
+
+        Time.sleep(6.5)
         clock.tick()
+
+        ftime = pg.time.get_ticks()
+        timer = time_per_level
 
         music.load("data/sounds/main_track.mp3")
         music.set_volume(0.5)
@@ -163,21 +167,17 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
     }
     size = tile_size
 
-    def __init__(self, tile_type, tile_pos, *groups, in_pixels = 0):
+    def __init__(self, tile_type, tile_pos, *groups):
         super().__init__(*groups)
         self.image = Tile.images[tile_type]
-        if in_pixels:
-            self.rect = self.image.get_rect().move(tile_pos[0], tile_pos[1])
-        else:
-            self.rect = self.image.get_rect().move(tile_pos[0] * Tile.size, tile_pos[1] * Tile.size)
+        self.rect = self.image.get_rect().move(tile_pos[0] * self.size,
+                                               tile_pos[1] * self.size)
         self.type = tile_type
 
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx, -1 * dy)
-        self.rect = self.image.get_rect().move(self.rect.x,
-                                               self.rect.y)
 
-    def get_pos(self):   # номер плитки по горизонтали и вертикали
+    def get_pos(self):  # номер плитки по горизонтали и вертикали
         return self.rect.x // tile_size, self.rect.y // tile_size
 
 
@@ -247,8 +247,8 @@ class Level:  # класс уровня
         for enemy in self.enemy_group:
             enemy.kill()
 
-    def add_tile(self, x, y, tile_type):  # добавить тайл на указанную позицию
-        Tile(tile_type, (x, y), self.tile_group, in_pixels=1)
+    def add_tile(self, x, y, tile_type):  # добавить стену/кирпичи на указанную позицию
+        Tile(tile_type, (x // tile_size, y // tile_size), self.tile_group)
 
 
 class Entity(pg.sprite.Sprite):  # базовый класс движущихся сущностей
@@ -265,34 +265,30 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
             if tile.type == 'wall' or tile.type == 'brick' or tile.type == 'question':
                 # в случае если перемещение происходит на препятствие,
                 # сущность перемещается на последний пиксель перед ним
-
                 if dy:
                     if dy < 0:
                         self.rect = self.image.get_rect().move(self.rect.x, tile.rect.y + Tile.size)
-                        if tile.rect.x < self.rect.x + self.rect.width and self.time * 50 < self.jump_speed * dt:
-                            if tile.type == 'brick':
-                                tile.kill()
-                                level.get_player().jump_speed = 0
-                                level.get_player().time = 0
-                            elif tile.type == 'question':
-                                tile.kill()
-                                level.get_player().jump_speed = 0
-                                level.get_player().time = 0
-                                rnd_val = random.randint(0, 9)
-                                if rnd_val in (4, 5):   # добавить жизнь
-                                    plus_hp()
-                                    print("plаyer.hp+1")
-                                if rnd_val == 3:  # убрать жизнь
-                                    minus_hp(False, 3)
-                                    print("plаyer.hp-1")
-                                elif rnd_val in (0, 1, 2):  # превратить в кирпич
-                                    level.add_tile(tile.rect.x, tile.rect.y, 'brick')
-                                    tile.kill()
-                                    print(1)
-                                elif rnd_val in (6, 7):  # превратить в стену
-                                    level.add_tile(tile.rect.x, tile.rect.y, 'wall')
-                                else:
-                                    print("пусто")
+                        if tile.type == 'brick' and self.rect.x >= tile.rect.x:
+                            tile.kill()
+                            level.get_player().jump_speed = 0
+                            level.get_player().time = 0
+                        elif tile.type == 'question' and self.rect.x >= tile.rect.x:
+                            tile.kill()
+                            level.get_player().jump_speed = 0
+                            level.get_player().time = 0
+                            rnd_val = random.randint(0, 9)
+                            if rnd_val in (4, 5):  # добавить очки
+                                plus_xp()
+                                print("plаyer.xp+50")
+                            if rnd_val == 3:  # убрать жизнь
+                                minus_hp(False, 3)
+                                print("plаyer.hp-1")
+                            elif rnd_val in (0, 1, 2):  # превратить в кирпич
+                                level.add_tile(tile.rect.x + self.rect.width, tile.rect.y, 'brick')
+                            elif rnd_val in (6, 7):  # превратить в стену
+                                level.add_tile(tile.rect.x + self.rect.width, tile.rect.y, 'wall')
+                            else:
+                                print("пусто")
 
                     else:
                         self.rect = self.image.get_rect().move(self.rect.x,
@@ -306,7 +302,7 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                                                                self.rect.y)
                     return - 1
 
-    def physic(self):  # метод отвечающий за физику падения
+    def physic(self, dt):  # метод отвечающий за физику падения
         if self.step(0, self.time * 50, level) == -1:
             self.time = 0
         else:
@@ -319,8 +315,12 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
 now = 100
 
 
-def plus_hp():  # увеличить количество жизней на 1
-    Player.hp += 1
+def plus_xp():  # добавляет 50 очков к сумме
+    Player.score += 100
+
+    if Player.score >= 100:
+        Player.score -= 100
+        Player.hp += 1
 
 
 def minus_hp(hit=False, enemy_type=1):  # уменьшить количество жизней на 1
@@ -401,15 +401,12 @@ class Player(Entity):  # класс игрока
         return 'player', (self.rect.x, self.rect.y)
 
     def physic(self, delta_t):
-        if level.get_player().step(0, -self.jump_speed * delta_t, level) == -1:
-            self.jump_speed = 0
-            self.time = 0
         if self.step(0, self.time * 50, level) == -1:
-            level.get_player().step(0, self.jump_speed * (delta_t + 0.001), level)
             self.time = 0
             self.jump_speed = 0
             self.can_jump = 2
         else:
+            level.get_player().step(0, -self.jump_speed * (delta_t + 0.001) * 50, level)
             self.time += delta_t
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
             if tile.type == 'end':
@@ -423,7 +420,7 @@ class Player(Entity):  # класс игрока
 
     def jump(self, h):
         if self.can_jump > 0:
-            self.jump_speed = h ** 0.5 * Tile.size
+            self.jump_speed = h ** 0.5
             level.get_player().step(0, -0.1, level)
             self.can_jump -= 1
             self.time = 0
@@ -513,7 +510,7 @@ def SaveResult(scrn):
             '''
     tmp = cur.execute(query).fetchall()
     for i, row in enumerate(tmp):
-        res.append([i+1] + list(row))
+        res.append([i + 1] + list(row))
     cur.close()
     return res
 
@@ -524,7 +521,8 @@ top5 = []
 
 pg.init()
 
-timer = time_per_lever
+# ftime = pg.time.get_ticks()
+timer = time_per_level
 clock = pg.time.Clock()
 
 music = pg.mixer.music
@@ -632,7 +630,7 @@ while running:
 
             for enemy in level.enemy_group:  # физика и ии противника
                 enemy.ai(level)
-                enemy.physic()
+                enemy.physic(dt)
 
             score_label = font.render(f"Score: {Player.score}", True, (255, 255, 255), (0, 0, 0))
             hp_label = font.render(f"hp x {Player.hp}", True, (255, 255, 255), (0, 0, 0))
@@ -652,16 +650,16 @@ while running:
             game_over = font.render(f"Game over!", False, (255, 255, 255), (0, 0, 0))
             final_score = font.render(f"Your score: {Player.all_score}", True, (255, 255, 255), (0, 0, 0))
             if not tooMuch_time:
-                time_table = font.render(f"Time: {time_per_lever - timer}", True, (255, 255, 255), (0, 0, 0))
+                time_table = font.render(f"Time: {time_per_level - timer}", True, (255, 255, 255), (0, 0, 0))
                 screen.blit(time_table, (440, 225))
             else:
                 time_table = font.render(f"Time: Too Much!", True, (255, 150, 150), (0, 0, 0))
                 screen.blit(time_table, (370, 225))
             advice = font.render(f"Press any button to continue", True, (255, 255, 255), (0, 0, 0))
 
-            screen.blit(game_over, (405, 80))     # (405, 250)
+            screen.blit(game_over, (405, 80))  # (405, 250)
             screen.blit(final_score, (385, 130))  # (385, 300)
-            screen.blit(advice, (267, 175))       # (267, 425)
+            screen.blit(advice, (267, 175))  # (267, 425)
 
             FontBig = pg.font.SysFont('Super Mario 128', 50)
             FontSmall = pg.font.SysFont('Super Mario 128', 25)
@@ -694,7 +692,7 @@ while running:
                     level_path = f'data/levels/{level_num}_lvl.txt'
                     level = Level(level_path)
 
-                    timer = time_per_lever
+                    timer = time_per_level
                     ftime = pg.time.get_ticks()
 
                     music.load("data/sounds/main_track.mp3")

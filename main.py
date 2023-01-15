@@ -4,14 +4,15 @@ import time as Time
 from datetime import datetime
 import sqlite3
 
-
 db_name = "data/DB/mario.db"
 level_num = 1
 tile_size = 50
 FPS = 30  # frames per second
-time_per_lever = 150  # время, отведенное на прохождение уровня
-saved_to_db = False   # флаг для однократного сохранения
+time_per_level = 150  # время, отведенное на прохождение уровня
+saved_to_db = False  # флаг для однократного сохранения
 user_text = ''
+blink_counter = 6  # счетчик "миганий" сообщения о событии (т.ч. срабатывания события BLINK_EVENT)
+text_to_blink = ""  # тест сообщения о событии в игре
 
 
 # заставка
@@ -27,6 +28,7 @@ def start_screen(w, h, scrn, msc, clk):
     color_user_label = (255, 255, 255)
     fon = pg.transform.scale(pg.image.load('data/img/start.png'), (w, h))
     scrn.blit(fon, (0, 0))
+    mouse = pg.mouse.get_pos()
 
     while True:
         for event in pg.event.get():
@@ -41,7 +43,7 @@ def start_screen(w, h, scrn, msc, clk):
                     if user_text == '':  # пyстое имя нельзя
                         color_user_label = (255, 0, 0)
                         break
-                    return   # начинаем игру
+                    return  # начинаем игру
                 else:
                     # кликнули над полем ввода имени
                     if 230 <= mouse[0] <= 230 + text_w and 3 * h / 4 - 230 <= mouse[1] <= 3 * h / 4 - 230 + 50:
@@ -62,31 +64,31 @@ def start_screen(w, h, scrn, msc, clk):
                     if len(user_text) <= 18:
                         user_text += event.unicode
 
-        BtnFont = pg.font.SysFont('Super Mario 128', 50)
+        btn_font = pg.font.SysFont('Super Mario 128', 50)
         color_font = (255, 255, 255)
-        ColorBtn = (0, 177, 32)
-        ColorBtn1 = (127, 127, 127)
-        # отрисуем две кнопки qiut и start ("двойной" прямойгольник с тенью)
-        text_quit = BtnFont.render('Q U I T', True, color_font)
-        text_start = BtnFont.render('S T A R T', True, color_font)
-        pg.draw.rect(scrn, ColorBtn1, [85, 3 * h / 4 - 165 + 5, 200, 50])
-        pg.draw.rect(scrn, ColorBtn, [80, 3 * h / 4 - 165, 200, 50])
-        pg.draw.rect(scrn, ColorBtn1, [85, 3 * h / 4 - 85, 200, 50])
-        pg.draw.rect(scrn, ColorBtn, [80, 3 * h / 4 - 85, 200, 50])
+        color_btn = (0, 177, 32)
+        color_btn1 = (127, 127, 127)
+        # отрисуем две кнопки quit и start ("двойной" прямойгольник с тенью)
+        text_quit = btn_font.render('Q U I T', True, color_font)
+        text_start = btn_font.render('S T A R T', True, color_font)
+        pg.draw.rect(scrn, color_btn1, [85, 3 * h / 4 - 165 + 5, 200, 50])
+        pg.draw.rect(scrn, color_btn, [80, 3 * h / 4 - 165, 200, 50])
+        pg.draw.rect(scrn, color_btn1, [85, 3 * h / 4 - 85, 200, 50])
+        pg.draw.rect(scrn, color_btn, [80, 3 * h / 4 - 85, 200, 50])
         scrn.blit(text_start, (100, 3 * h / 4 - 155))
         scrn.blit(text_quit, (120, 3 * h / 4 - 75))
 
         # для поля ввода имени
         color_active = pg.Color(190, 255, 190)
         color_passive = pg.Color(0, 177, 32)
-        enter_name = BtnFont.render('Your name:', True, color_user_label)
+        enter_name = btn_font.render('Your name:', True, color_user_label)
         scrn.blit(enter_name, (30, 3 * h / 4 - 225))
         if active:
             color = color_active
         else:
             color = color_passive
         pg.draw.rect(scrn, color, input_rect)
-        text_surface = BtnFont.render(user_text, True, (0, 0, 0))
+        text_surface = btn_font.render(user_text, True, (0, 0, 0))
         scrn.blit(text_surface, (input_rect.x + 5, input_rect.y + 5))
 
         input_rect.w = max(260, text_surface.get_width() + 10)
@@ -96,38 +98,37 @@ def start_screen(w, h, scrn, msc, clk):
         pg.display.flip()
         clk.tick(FPS)
 
-# def is_negative(num):
-#    if num < 0:
-#        return -1
-#    elif num > 0:
-#        return 1
-#    else:
-#        return 0
 
-
-def end_world(world_name=''):   # завершение уровня и подготовка к началу следующего
+def end_world(world_name=''):  # завершение уровня и подготовка к началу следующего
     global level, level_num, ftime, timer
     level_num += 1
 
     if level_num > 3:
         end_game()
     else:
-        Time.sleep(0.5)
         level.__del__()
 
         if Player.deaths <= 3:
             Player.levels_score += Player.score + Player.all_score + (Player.hp - Player.deaths) * 100 + \
-                                   ((time_per_lever - timer) * 2)
+                                   ((time_per_level - timer) * 2)
         else:
-            Player.levels_score += Player.score + Player.all_score + ((time_per_lever - timer) * 2)
+            Player.levels_score += Player.score + Player.all_score + ((time_per_level - timer) * 2)
 
         Player.score = 0
         Player.hp += 1
         Player.all_score = 0
-        Player.all_time += time_per_lever - timer
+        Player.all_time += time_per_level - timer
         Player.deaths = 0
+
+        music.load("data/sounds/win_track.mp3")
+        music.set_volume(0.5)
+        music.play(1)
+
+        Time.sleep(6.5)
+        clock.tick()
+
         ftime = pg.time.get_ticks()
-        timer = time_per_lever
+        timer = time_per_level
 
         music.load("data/sounds/main_track.mp3")
         music.set_volume(0.5)
@@ -170,7 +171,7 @@ class Tile(pg.sprite.Sprite):  # класс стен и препятствий
     def step_camera(self, dx, dy):  # метод перемещения для работы перемещения камеры
         self.rect = self.rect.move(-1 * dx, -1 * dy)
 
-    def get_pos(self):   # номер плитки по горизонтали и вертикали
+    def get_pos(self):  # номер плитки по горизонтали и вертикали
         return self.rect.x // tile_size, self.rect.y // tile_size
 
 
@@ -252,6 +253,7 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
         self.time = 0
 
     def step(self, dx, dy, level):  # метод перемещения сущности
+        global blink_counter, BLINK_EVENT, text_to_blink
         self.rect = self.rect.move(dx, dy)
 
         for tile in pg.sprite.spritecollide(self, level.get_tiles(), False):
@@ -270,19 +272,34 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
                             level.get_player().jump_speed = 0
                             level.get_player().time = 0
                             rnd_val = random.randint(0, 9)
-                            if rnd_val in (4, 5):   # добавить жизнь
+                            if rnd_val == 0:  # добавить жизнь
                                 plus_hp()
-                                print("plаyer.hp+1")
-                            if rnd_val == 3:  # убрать жизнь
+                                text_to_blink = "hp+1"
+                                blink_counter = 6  # счетчик миганий начать сначала
+                                BLINK_EVENT = pg.USEREVENT + 0  # "включить" событие о событии для мигания
+                            elif rnd_val in (1, 2):  # убрать жизнь
                                 minus_hp(False, 3)
-                                print("plаyer.hp-1")
-                            elif rnd_val in (0, 1, 2):  # превратить в кирпич
+                                text_to_blink = "hp-1"
+                                blink_counter = 6  # счетчик миганий начать сначала
+                                BLINK_EVENT = pg.USEREVENT + 0  # "включить" событие о событии для мигания
+                            elif rnd_val == 3:  # превратить в кирпич
                                 level.add_tile(tile.rect.x + self.rect.width, tile.rect.y, 'brick')
-                            elif rnd_val in (6, 7):  # превратить в стену
+                            elif rnd_val in (4, 5):  # превратить в стену
                                 level.add_tile(tile.rect.x + self.rect.width, tile.rect.y, 'wall')
+                            elif rnd_val == 6:  # добавить очки
+                                plus_xp()
+                                text_to_blink = "points+50"
+                                blink_counter = 6
+                                BLINK_EVENT = pg.USEREVENT + 0
+                            elif rnd_val == 7:  # добавить время
+                                plus_time()
+                                text_to_blink = "time+5"
+                                blink_counter = 6
+                                BLINK_EVENT = pg.USEREVENT + 0
                             else:
-                                print("пусто")
-
+                                text_to_blink = "empty box"
+                                blink_counter = 6
+                                BLINK_EVENT = pg.USEREVENT + 0
                     else:
                         self.rect = self.image.get_rect().move(self.rect.x,
                                                                tile.rect.y - Tile.size + (Tile.size - self.rect.height))
@@ -310,6 +327,23 @@ now = 100
 
 def plus_hp():  # увеличить количество жизней на 1
     Player.hp += 1
+
+
+def plus_xp():  # добавляет 50 очков к сумме
+    Player.score += 50
+
+    if Player.score >= 100:
+        Player.score -= 100
+        Player.hp += 1
+
+
+def plus_time():  # увеличить время на уровень на 5 секунд
+    global timer, is_other_music
+    timer += 5
+    if timer > 60 and is_other_music:
+        music.load("data/sounds/main_track.mp3")
+        music.play(-1)
+        is_other_music = False
 
 
 def minus_hp(hit=False, enemy_type=1):  # уменьшить количество жизней на 1
@@ -499,7 +533,7 @@ def SaveResult(scrn):
             '''
     tmp = cur.execute(query).fetchall()
     for i, row in enumerate(tmp):
-        res.append([i+1] + list(row))
+        res.append([i + 1] + list(row))
     cur.close()
     return res
 
@@ -507,11 +541,12 @@ def SaveResult(scrn):
 level_path = f'data/levels/{level_num}_lvl.txt'
 level = Level(level_path)
 top5 = []
-
+BLINK_EVENT = pg.USEREVENT + 0
+empty = (255, 255, 255, 0)
 pg.init()
 
-#ftime = pg.time.get_ticks()
-timer = time_per_lever
+# ftime = pg.time.get_ticks()
+timer = time_per_level
 clock = pg.time.Clock()
 
 music = pg.mixer.music
@@ -528,13 +563,15 @@ music.set_volume(0.5)
 is_other_music = False
 tooMuch_time = False
 is_end = False
-
+blink_font = pg.font.SysFont('Super Mario 128', 30, italic=True)
+blink_surface = blink_font.render(text_to_blink, True, (255, 242, 0), (0, 0, 0))
+blink_rect = blink_surface.get_rect(center=(300, 670))
 font = pg.font.SysFont('Super Mario 128', 50)
 
 running = True
 jump = 0
 time = 0
-
+pg.time.set_timer(BLINK_EVENT, 500)
 while running:
     screen.fill('black')
     dt = clock.tick(FPS) / 1000
@@ -600,7 +637,14 @@ while running:
                 if event.type == pg.KEYDOWN:
                     if event.key == pg.K_w or event.key == pg.K_UP or event.key == pg.K_SPACE:  # прыжок
                         level.get_player().jump(135)
-
+                if event.type == BLINK_EVENT:
+                    if blink_counter % 2 == 0:  # на четный счет создаем тест
+                        blink_surface = blink_font.render(text_to_blink, True, (255, 242, 0), (0, 0, 0))
+                    else:                     # на нечетный счет удаляем его
+                        del blink_surface
+                    blink_counter -= 1
+                    if blink_counter == 0:  # если счетчик миганий "кончится", выключить событие
+                        BLINK_EVENT = 0
             if pg.key.get_pressed()[pg.K_LEFT] or pg.key.get_pressed()[pg.K_a]:  # хождение вперед, назад
                 level.get_player().camera_step(-7, 0, level)
             if pg.key.get_pressed()[pg.K_RIGHT] or pg.key.get_pressed()[pg.K_d]:
@@ -629,7 +673,10 @@ while running:
             screen.blit(time_label, (440, 660))
             screen.blit(score_label, (30, 660))
             screen.blit(hp_label, (870, 660))
-
+            # если "мигания не кончились и счет четный, отобразить сообщение о событии
+            if blink_counter > 0 and blink_counter % 2 == 0:
+                blink_surface = blink_font.render(text_to_blink, True, (255, 242, 0), (0, 0, 0))
+                screen.blit(blink_surface, blink_rect)
         else:
             # сохраняю в БД имя игрока, дату игры и результат
             if not saved_to_db:
@@ -639,16 +686,16 @@ while running:
             game_over = font.render(f"Game over!", False, (255, 255, 255), (0, 0, 0))
             final_score = font.render(f"Your score: {Player.all_score}", True, (255, 255, 255), (0, 0, 0))
             if not tooMuch_time:
-                time_table = font.render(f"Time: {time_per_lever - timer}", True, (255, 255, 255), (0, 0, 0))
+                time_table = font.render(f"Time: {time_per_level - timer}", True, (255, 255, 255), (0, 0, 0))
                 screen.blit(time_table, (440, 225))
             else:
                 time_table = font.render(f"Time: Too Much!", True, (255, 150, 150), (0, 0, 0))
                 screen.blit(time_table, (370, 225))
             advice = font.render(f"Press any button to continue", True, (255, 255, 255), (0, 0, 0))
 
-            screen.blit(game_over, (405, 80))     # (405, 250)
+            screen.blit(game_over, (405, 80))  # (405, 250)
             screen.blit(final_score, (385, 130))  # (385, 300)
-            screen.blit(advice, (267, 175))       # (267, 425)
+            screen.blit(advice, (267, 175))  # (267, 425)
 
             FontBig = pg.font.SysFont('Super Mario 128', 50)
             FontSmall = pg.font.SysFont('Super Mario 128', 25)
@@ -681,7 +728,7 @@ while running:
                     level_path = f'data/levels/{level_num}_lvl.txt'
                     level = Level(level_path)
 
-                    timer = time_per_lever
+                    timer = time_per_level
                     ftime = pg.time.get_ticks()
 
                     music.load("data/sounds/main_track.mp3")

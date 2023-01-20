@@ -541,6 +541,7 @@ class Enemy(Entity):
 
 # сохранение результатов и получение top-5 лучших игроков
 def SaveResult(scrn):
+    global save_to_db
     res = []
     res.append(['N', 'Имя игрока', 'Результат'])
     con = sqlite3.connect(db_name)
@@ -560,6 +561,7 @@ def SaveResult(scrn):
     for i, row in enumerate(tmp):
         res.append([i + 1] + list(row))
     cur.close()
+    save_to_db = False
     return res
 
 

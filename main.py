@@ -101,12 +101,13 @@ def start_screen(w, h, scrn, msc, clk):
 
 
 def is_negative(num):
-  if num < 0:
-    return -1
-  elif num > 0:
-    return 1
-  else:
-    return 0
+    if num < 0:
+        return -1
+    elif num > 0:
+        return 1
+    else:
+        return 0
+
 
 def end_world(world_name=''):  # завершение уровня и подготовка к началу следующего
     global level, level_num, ftime, timer
@@ -345,8 +346,10 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
 
 now = 100
 
+
 def plus_hp():  # увеличить количество жизней на 1
     Player.hp += 1
+
 
 def plus_xp():  # добавляет 50 очков к сумме
     Player.score += 50
@@ -662,7 +665,7 @@ while running:
                 if event.type == BLINK_EVENT:
                     if blink_counter % 2 == 0:  # на четный счет создаем тест
                         blink_surface = blink_font.render(text_to_blink, True, (255, 242, 0), (0, 0, 0))
-                    else:                     # на нечетный счет удаляем его
+                    else:  # на нечетный счет удаляем его
                         del blink_surface
                     blink_counter -= 1
                     if blink_counter == 0:  # если счетчик миганий "кончится", выключить событие

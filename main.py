@@ -75,6 +75,7 @@ def start_screen(w, h, scrn, msc, clk):
         pg.draw.rect(scrn, color_btn, [80, 3 * h / 4 - 165, 200, 50])
         pg.draw.rect(scrn, color_btn1, [85, 3 * h / 4 - 85, 200, 50])
         pg.draw.rect(scrn, color_btn, [80, 3 * h / 4 - 85, 200, 50])
+
         scrn.blit(text_start, (100, 3 * h / 4 - 155))
         scrn.blit(text_quit, (120, 3 * h / 4 - 75))
 
@@ -98,6 +99,14 @@ def start_screen(w, h, scrn, msc, clk):
         pg.display.flip()
         clk.tick(FPS)
 
+
+def is_negative(num):
+  if num < 0:
+    return -1
+  elif num > 0:
+    return 1
+  else:
+    return 0
 
 def end_world(world_name=''):  # завершение уровня и подготовка к началу следующего
     global level, level_num, ftime, timer
@@ -325,8 +334,12 @@ class Entity(pg.sprite.Sprite):  # базовый класс движущихс�
 now = 100
 
 
-def plus_hp():  # увеличить количество жизней на 1
-    Player.hp += 1
+def plus_xp():  # добавляет 50 очков к сумме
+    Player.score += 100
+
+    if Player.score >= 100:
+        Player.score -= 100
+        Player.hp += 1
 
 
 def plus_xp():  # добавляет 50 очков к сумме
